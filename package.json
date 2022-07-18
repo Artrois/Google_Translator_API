@@ -1,0 +1,13 @@
+{
+  "name": "google_trans_api",
+  "version": "0.0.1",
+  "scripts": {
+    "getlangs": "node get_supported_langs.js",
+    "translate": "node translate_strings.js"
+  },
+  "dependencies": {
+    "@google-cloud/translate": "^7.0.0",
+    "n-readlines": "^1.0.1",
+    "pofile": "^1.1.3"
+  }
+}
