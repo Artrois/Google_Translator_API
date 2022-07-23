@@ -1,7 +1,7 @@
 /**
  * TODO(developer): Uncomment these variables before running the sample.
  */
-const projectId = 'composed-falcon-356619';
+const projectId = '';
 const location = 'global';
 const source_lang = 'de';
 const target_lang = 'en';
