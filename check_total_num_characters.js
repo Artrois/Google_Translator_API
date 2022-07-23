@@ -1,4 +1,5 @@
 const fs = require('fs');
+const yaml = require('js-yaml');
 let path = require('path');
 let trans = require('./translate_strings_with_googleAPI');
 
@@ -70,7 +71,25 @@ async function count_chars(path2file){
         break;
 
     case '.yml':
-        process_YML(path2file);
+        let arrayOfStrings2BeTranslated = process_YML(path2file);
+        if (arrayOfStrings2BeTranslated.length === 0) {
+            console.log("YAML translations not found, please check format of YAML file => exit");
+            return;
+        }
+        var readlineSync = require('readline-sync');
+        if (readlineSync.keyInYN('Do you want to start translation of YAML?')) {
+            // 'Y' key was pressed.
+            console.log('Translating in 2 secs...');
+            await sleep(2000);
+            if (arrayOfStrings2BeTranslated.length === 0) throw "count_chars(): nothing to be translated"
+            let translated_yaml = await trans.translateString(arrayOfStrings2BeTranslated);
+            if (translated_yaml.length !== arrayOfStrings2BeTranslated.length)throw "array to be translated not matches array with translations"
+            store_YAML(translated_yaml, path2file, suffix)
+        } else {
+            // Another key was pressed.
+            console.log('Canceled...');
+            // Do something...
+        }
         break;
   }
 }
@@ -155,7 +174,49 @@ function process_PO(path2file){
 }
 
 function process_YML(path2file){
+     // Get document, or throw exception on error
+/*     try {
+        const ymldoc = yaml.load(fs.readFileSync(path2file, 'utf8'));
+        console.log(ymldoc);
+    } catch (e) {
+        throw "process_YML(): Processing of YAML failed with: " + e;
+    }  */
+    const nReadlines = require('n-readlines');
+    const broadbandLines = new nReadlines(path2file);
 
+    let line;
+    let lineNumber = 0;
+    let arrayOfStrings2BeTranslated = [];
+    let totalNumChars2Translate = 0;
+
+    while (line = broadbandLines.next()) {
+        lineNumber++;
+        let cur_line = line.toString('utf8');
+
+        //skip empty lines
+        if (cur_line === "")continue;
+        //skip commented lines
+        else if (cur_line.trim().substring(0,1) === "#")continue;
+        //process text lines
+        else if (cur_line.startsWith("  - text:")){
+            let tmp = cur_line.slice(10);
+            arrayOfStrings2BeTranslated.push(tmp);
+            totalNumChars2Translate += tmp.length;
+            console.log(`${lineNumber}: ${cur_line} T:` + tmp.length);
+        }
+        //process example lines
+        else if (cur_line.startsWith("    - ")){
+            let tmp = cur_line.slice(6);
+            arrayOfStrings2BeTranslated.push(tmp);
+            totalNumChars2Translate += tmp.length;
+            console.log(`${lineNumber}: ${cur_line} T:` + tmp.length);
+        }else{
+            console.log(`${lineNumber}: ${cur_line}`);
+        }
+    }
+
+    console.log("Total number chars to be translated: " + totalNumChars2Translate);
+    return arrayOfStrings2BeTranslated;
 }
 
 /**
@@ -197,6 +258,56 @@ function store_PO(PO_file, path2file, suffix){
     try{
         fs.writeFileSync(new_path2file, full_buffer2bewritten, { flag: 'a+' });
         console.log("New PO file name: " + new_path2file);
+    }
+    catch (err){
+        console.log("Writing msgstrings failed with: " + err);
+    }
+}
+
+/**
+ * stores the content of translatedArray  to a new file with new extension e.g. .en.yml
+ * @param {yml_file}, []
+ * @param {path2file}, path to original file
+ * @param {suffix}, suffix that will be attached right before the .po extension
+ */
+ function store_YAML(translatedArray, path2file, suffix){
+    let extension = path.extname(path2file);
+    let basename = path.basename(path2file, extension);//extracts file name only without extension
+    let dirname = path.dirname(path2file);
+
+    //construct new file name and path
+    let new_path2file = dirname + "/" + basename + suffix + extension;
+
+    const nReadlines = require('n-readlines');
+    const broadbandLines = new nReadlines(path2file);
+
+    let line;
+    let lineNumber = 0;
+    let arrayOfStrings2BeWritten = [];
+    let index_in_translated_array = 0;
+
+    while (line = broadbandLines.next()) {
+        lineNumber++;
+        let cur_line = line.toString('utf8');
+
+        //process text lines
+        if (cur_line.startsWith("  - text:")){
+            index_in_translated_array++;
+            arrayOfStrings2BeWritten.push("  - text:" + translatedArray[index_in_translated_array]);
+        }
+        //process example lines
+        else if (cur_line.startsWith("    - ")){
+            index_in_translated_array++;
+            arrayOfStrings2BeWritten.push("    - " + translatedArray[index_in_translated_array]);
+        }else{
+            arrayOfStrings2BeWritten.push(cur_line);
+        }
+    }
+  
+   
+    try{
+        fs.writeFileSync(new_path2file, full_buffer2bewritten, { flag: 'w+' });
+        console.log("New YML file name: " + new_path2file);
     }
     catch (err){
         console.log("Writing msgstrings failed with: " + err);

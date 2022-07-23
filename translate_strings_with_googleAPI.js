@@ -1,9 +1,11 @@
 /**
  * TODO(developer): Uncomment these variables before running the sample.
  */
-const projectId = '';
+const projectId = 'composed-falcon-356619';
 const location = 'global';
-const text = 'text to translate';
+const source_lang = 'de';
+const target_lang = 'en';
+//const text = 'text to translate';
 
 // Imports the Google Cloud Translation library
 const {TranslationServiceClient} = require('@google-cloud/translate');
@@ -26,8 +28,8 @@ async function translateText(string2translate) {
     parent: `projects/${projectId}/locations/${location}`,
     contents: string2translate,
     mimeType: 'text/plain', // mime types: text/plain, text/html
-    sourceLanguageCode: 'de',
-    targetLanguageCode: 'en',
+    sourceLanguageCode: source_lang,
+    targetLanguageCode: target_lang,
   };
 
   // Run request
