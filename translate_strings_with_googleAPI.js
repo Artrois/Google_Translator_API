@@ -4,7 +4,7 @@
 const projectId = '';
 const location = 'global';
 const source_lang = 'de';
-const target_lang = 'en';
+let target_lang = 'en';
 //const text = 'text to translate';
 
 // Imports the Google Cloud Translation library
@@ -13,16 +13,17 @@ const {TranslationServiceClient} = require('@google-cloud/translate');
 // Instantiates a client
 const translationClient = new TranslationServiceClient();
 
-exports.translateString = function(string2translate){
+exports.translateString = function(string2translate, tlang){
   let param;
+  target_lang = tlang;
   //check parameter, it has to be an array of strings
   if (typeof string2translate === 'string')param = [string2translate];
   else if (!Array.isArray(string2translate))throw 'exports.translateString()::uknown param to be translated';
   param = string2translate;
-  return translateText(param);
+  return translateText(param, tlang);
 }
 
-async function translateText(string2translate) {
+async function translateText(string2translate, target_lang) {
   // Construct request
   const request = {
     parent: `projects/${projectId}/locations/${location}`,

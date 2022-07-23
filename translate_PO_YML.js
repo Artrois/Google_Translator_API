@@ -11,8 +11,9 @@ let file_exists = false;
 
 
 
-if (myArgs.length == 0){
-    console.log('no parameter given. Expected path to file to translate. Supported files: *.po, *.yml')
+if (myArgs.length !== 2){
+    console.log('Wrong parameters given: node translate_PO_YML.js [*.po | *.yml] [target_language]. Supported files: *.po, *.yml. See example:');
+    console.log("node .\translate_PO_YML.js ./domain.yml en");
     process.exit(1);
 } 
 
@@ -22,7 +23,7 @@ fs.stat(myArgs[0], function(err, stat) {
     if (err == null) {
         file_exists = true;
         console.log(`File exists: ${myArgs[0]}, continue counting chars.`);
-        count_chars(myArgs[0]);
+        count_chars(myArgs[0], myArgs[1]);
     } else if (err.code === 'ENOENT') {
       // file does not exist
       console.log(`File does not exist: ${myArgs[0]}`);
@@ -35,7 +36,7 @@ fs.stat(myArgs[0], function(err, stat) {
 
 
 
-async function count_chars(path2file){
+async function count_chars(path2file, target_lang){
   //extract file ending
   let extension = path.extname(path2file);
   console.log('Detected extension: ' + extension);
@@ -51,7 +52,7 @@ async function count_chars(path2file){
             for (element of PO_file.msgs)
                 arrayOfStrings2BeTranslated.push(element.msgid);
             if (arrayOfStrings2BeTranslated.length === 0) throw "count_chars(): nothing to be translated"
-            let translated_msgid = await trans.translateString(arrayOfStrings2BeTranslated);
+            let translated_msgid = await trans.translateString(arrayOfStrings2BeTranslated, target_lang);
 /*             for (const translation of translated_msgid.translations) {
                     console.log(`Translation: ${translation.translatedText}`);
             }  */
@@ -61,7 +62,7 @@ async function count_chars(path2file){
                 PO_file.msgs[i].msgstr = translated_msgid.translations[i].translatedText;
             }
             
-            store_PO(PO_file, path2file, ".en");
+            store_PO(PO_file, path2file, "." + target_lang);
         } else {
             // Another key was pressed.
             console.log('Canceled...');
@@ -72,19 +73,16 @@ async function count_chars(path2file){
 
     case '.yml':
         let arrayOfStrings2BeTranslated = process_YML(path2file);
-        if (arrayOfStrings2BeTranslated.length === 0) {
-            console.log("YAML translations not found, please check format of YAML file => exit");
-            return;
-        }
+
         var readlineSync = require('readline-sync');
         if (readlineSync.keyInYN('Do you want to start translation of YAML?')) {
             // 'Y' key was pressed.
             console.log('Translating in 2 secs...');
             await sleep(2000);
             if (arrayOfStrings2BeTranslated.length === 0) throw "count_chars(): nothing to be translated"
-            let translated_yaml = await trans.translateString(arrayOfStrings2BeTranslated);
-            if (translated_yaml.length !== arrayOfStrings2BeTranslated.length)throw "array to be translated not matches array with translations"
-            store_YAML(translated_yaml, path2file, suffix)
+            let translated_yaml = await trans.translateString(arrayOfStrings2BeTranslated, target_lang);
+            if (translated_yaml.translations.length !== arrayOfStrings2BeTranslated.length)throw "array to be translated not matches array with translations"
+            store_YAML(translated_yaml, path2file, "en" + target_lang)
         } else {
             // Another key was pressed.
             console.log('Canceled...');
@@ -286,30 +284,34 @@ function store_PO(PO_file, path2file, suffix){
     let arrayOfStrings2BeWritten = [];
     let index_in_translated_array = 0;
 
+    console.log("Num translated lines: " + translatedArray.translations.length);
+
     while (line = broadbandLines.next()) {
         lineNumber++;
         let cur_line = line.toString('utf8');
 
         //process text lines
         if (cur_line.startsWith("  - text:")){
+            arrayOfStrings2BeWritten.push("  - text: " + translatedArray.translations[index_in_translated_array].translatedText);
             index_in_translated_array++;
-            arrayOfStrings2BeWritten.push("  - text:" + translatedArray[index_in_translated_array]);
         }
         //process example lines
         else if (cur_line.startsWith("    - ")){
+            arrayOfStrings2BeWritten.push("    - " + translatedArray.translations[index_in_translated_array].translatedText);
             index_in_translated_array++;
-            arrayOfStrings2BeWritten.push("    - " + translatedArray[index_in_translated_array]);
         }else{
             arrayOfStrings2BeWritten.push(cur_line);
         }
+
+        console.log(`${lineNumber}: ${arrayOfStrings2BeWritten[lineNumber - 1]}`);
     }
   
    
     try{
-        fs.writeFileSync(new_path2file, full_buffer2bewritten, { flag: 'w+' });
+        fs.writeFileSync(new_path2file, arrayOfStrings2BeWritten.join('\r\n'), { flag: 'w+' });
         console.log("New YML file name: " + new_path2file);
     }
     catch (err){
-        console.log("Writing msgstrings failed with: " + err);
+        console.log("Writing YML failed with: " + err);
     }
 }
