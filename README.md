@@ -4,7 +4,7 @@ Scripts to parse PO and YML files and push it to google translator and then stor
 ## Project setup
 ```sh
 sudo apt install nodejs npm
-npm run install
+npm install
 ```
 Open translate_strings_with_googleAPI.js and get_supported_langs.js and update your projectID.
 
