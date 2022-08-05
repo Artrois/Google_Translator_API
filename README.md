@@ -30,7 +30,7 @@ The main script to load POs/YMLs and to translate is translate_strings_with_goog
 
 To run:
 ```sh
-node .\translate_PO_YML.js ./domain.yml
+node translate_PO_YML.js ./domain.yml en es
 ```
+This will produce domain.en.yml assuming (en)glish is the source languange and (es)paniol as target languange. 
 
-This will create another file with .en extension: ./domain.en.yml 
