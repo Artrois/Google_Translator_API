@@ -15,6 +15,7 @@ const translationClient = new TranslationServiceClient();
 
 exports.translateString = function(string2translate, tlang, slang){
   let param;
+  if (projectId.length === 0) throw "translate_strings_with_googleAPI.js::translateString(): projectId not set => exit";
   //target_lang = tlang;
   //check parameter, it has to be an array of strings
   if (typeof string2translate === 'string')param = [string2translate];
