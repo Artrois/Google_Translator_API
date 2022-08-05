@@ -11,9 +11,9 @@ let file_exists = false;
 
 
 
-if (myArgs.length !== 2){
-    console.log('Wrong parameters given: node translate_PO_YML.js [*.po | *.yml] [target_language]. Supported files: *.po, *.yml. See example:');
-    console.log("node .\translate_PO_YML.js ./domain.yml en");
+if (myArgs.length !== 3){
+    console.log('Wrong parameters given: node translate_PO_YML.js [*.po | *.yml] [source_language] [target_language]. Supported files: *.po, *.yml. See example:');
+    console.log("node .\translate_PO_YML.js ./domain.yml en es");
     process.exit(1);
 } 
 
@@ -23,7 +23,7 @@ fs.stat(myArgs[0], function(err, stat) {
     if (err == null) {
         file_exists = true;
         console.log(`File exists: ${myArgs[0]}, continue counting chars.`);
-        count_chars(myArgs[0], myArgs[1]);
+        count_chars(myArgs[0], myArgs[2], myArgs[1]);
     } else if (err.code === 'ENOENT') {
       // file does not exist
       console.log(`File does not exist: ${myArgs[0]}`);
@@ -36,7 +36,7 @@ fs.stat(myArgs[0], function(err, stat) {
 
 
 
-async function count_chars(path2file, target_lang){
+async function count_chars(path2file, target_lang, source_lang){
   //extract file ending
   let extension = path.extname(path2file);
   console.log('Detected extension: ' + extension);
@@ -52,7 +52,7 @@ async function count_chars(path2file, target_lang){
             for (element of PO_file.msgs)
                 arrayOfStrings2BeTranslated.push(element.msgid);
             if (arrayOfStrings2BeTranslated.length === 0) throw "count_chars(): nothing to be translated"
-            let translated_msgid = await trans.translateString(arrayOfStrings2BeTranslated, target_lang);
+            let translated_msgid = await trans.translateString(arrayOfStrings2BeTranslated, target_lang, source_lang);
 /*             for (const translation of translated_msgid.translations) {
                     console.log(`Translation: ${translation.translatedText}`);
             }  */
@@ -80,9 +80,9 @@ async function count_chars(path2file, target_lang){
             console.log('Translating in 2 secs...');
             await sleep(2000);
             if (arrayOfStrings2BeTranslated.length === 0) throw "count_chars(): nothing to be translated"
-            let translated_yaml = await trans.translateString(arrayOfStrings2BeTranslated, target_lang);
+            let translated_yaml = await trans.translateString(arrayOfStrings2BeTranslated, target_lang, source_lang);
             if (translated_yaml.translations.length !== arrayOfStrings2BeTranslated.length)throw "array to be translated not matches array with translations"
-            store_YAML(translated_yaml, path2file, "en" + target_lang)
+            store_YAML(translated_yaml, path2file, "." + target_lang)
         } else {
             // Another key was pressed.
             console.log('Canceled...');
@@ -186,10 +186,14 @@ function process_YML(path2file){
     let lineNumber = 0;
     let arrayOfStrings2BeTranslated = [];
     let totalNumChars2Translate = 0;
+    let regex_quotes = /(?<=:[ ]+)"?(.+)"?/;
 
     while (line = broadbandLines.next()) {
         lineNumber++;
         let cur_line = line.toString('utf8');
+
+        //check regex
+        let match_quotes = cur_line.match(regex_quotes);
 
         //skip empty lines
         if (cur_line === "")continue;
@@ -208,7 +212,15 @@ function process_YML(path2file){
             arrayOfStrings2BeTranslated.push(tmp);
             totalNumChars2Translate += tmp.length;
             console.log(`${lineNumber}: ${cur_line} T:` + tmp.length);
-        }else{
+        }
+        //process lines matching /(?<=:[ ]+)"?(.+)"?/g
+        else if (match_quotes !== null){
+            let tmp = match_quotes[0];//.replace('/&quot;/g',"'");
+            arrayOfStrings2BeTranslated.push(tmp);
+            totalNumChars2Translate += tmp.length;
+            console.log(`${lineNumber}: ${cur_line} T:` + tmp.length);
+        }
+        else{
             console.log(`${lineNumber}: ${cur_line}`);
         }
     }
@@ -272,6 +284,7 @@ function store_PO(PO_file, path2file, suffix){
     let extension = path.extname(path2file);
     let basename = path.basename(path2file, extension);//extracts file name only without extension
     let dirname = path.dirname(path2file);
+    let regex_quotes = /([ ]+(.+))(:[ ]+)("?(.+)"?)/;
 
     //construct new file name and path
     let new_path2file = dirname + "/" + basename + suffix + extension;
@@ -290,6 +303,9 @@ function store_PO(PO_file, path2file, suffix){
         lineNumber++;
         let cur_line = line.toString('utf8');
 
+        //check regex
+        let match_quotes = cur_line.match(regex_quotes);
+
         //process text lines
         if (cur_line.startsWith("  - text:")){
             arrayOfStrings2BeWritten.push("  - text: " + translatedArray.translations[index_in_translated_array].translatedText);
@@ -299,7 +315,14 @@ function store_PO(PO_file, path2file, suffix){
         else if (cur_line.startsWith("    - ")){
             arrayOfStrings2BeWritten.push("    - " + translatedArray.translations[index_in_translated_array].translatedText);
             index_in_translated_array++;
-        }else{
+        }
+        //process lines matching /([ ]+(.+))(:[ ]+)("?(.+)"?)/g
+        else if(match_quotes !== null){
+            let tmp = match_quotes[1] + match_quotes[3] + translatedArray.translations[index_in_translated_array].translatedText;
+            arrayOfStrings2BeWritten.push(tmp);
+            index_in_translated_array++;
+        }
+        else{
             arrayOfStrings2BeWritten.push(cur_line);
         }
 
