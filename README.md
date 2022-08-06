@@ -103,3 +103,4 @@ en:
 ## ToDo
 - [ ] add regex parameter for custom pattern recognition
 - [ ] add source language auto detection
+- [ ] add option to split the message to google translate API in chunks to meet API limits
