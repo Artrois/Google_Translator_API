@@ -102,3 +102,4 @@ en:
 
 ## ToDo
 - [ ] add regex parameter for custom pattern recognition
+- [ ] add source language auto detection
